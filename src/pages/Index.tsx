@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Download, Share2 } from 'lucide-react';
+import { ArrowLeft, Download, Share2, Save, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import HeroSection from '@/components/travel/HeroSection';
 import TripForm from '@/components/travel/TripForm';
@@ -9,17 +10,28 @@ import WeatherCard from '@/components/travel/WeatherCard';
 import BudgetMeter from '@/components/travel/BudgetMeter';
 import ItineraryCard from '@/components/travel/ItineraryCard';
 import TravelTips from '@/components/travel/TravelTips';
+import UserMenu from '@/components/auth/UserMenu';
+import LoginModal from '@/components/auth/LoginModal';
 import { TripFormData, Itinerary } from '@/types/travel';
 import { generateMockItinerary } from '@/data/mockItinerary';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<TripFormData | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+
+  const { isAuthenticated, saveTrip } = useAuth();
+  const { toast } = useToast();
 
   const handleFormSubmit = async (data: TripFormData) => {
     setIsLoading(true);
     setFormData(data);
+    setIsSaved(false);
 
     // Simulate API call delay for realistic UX
     // In production, this would call the backend APIs (Google Places, OpenWeather, OpenAI)
@@ -37,6 +49,34 @@ const Index = () => {
   const handleReset = () => {
     setItinerary(null);
     setFormData(null);
+    setIsSaved(false);
+  };
+
+  const handleSaveTrip = async () => {
+    if (!isAuthenticated) {
+      setIsLoginOpen(true);
+      return;
+    }
+
+    if (!itinerary || !formData) return;
+
+    setIsSaving(true);
+    try {
+      await saveTrip(itinerary, formData);
+      setIsSaved(true);
+      toast({
+        title: 'Trip Saved!',
+        description: 'Your itinerary has been saved to My Trips.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to save trip. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -51,6 +91,16 @@ const Index = () => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
           >
+            {/* Top Bar */}
+            <div className="absolute top-0 right-0 z-50 p-4">
+              <div className="flex items-center gap-2">
+                <Link to="/my-trips">
+                  <Button variant="glass" size="sm">My Trips</Button>
+                </Link>
+                <UserMenu variant="glass" />
+              </div>
+            </div>
+
             <HeroSection />
             
             <div className="relative z-10 -mt-20 pb-20 px-4">
@@ -86,6 +136,22 @@ const Index = () => {
                   Plan New Trip
                 </Button>
                 <div className="flex items-center gap-2">
+                  <Button 
+                    variant={isSaved ? 'outline' : 'hero'}
+                    size="sm" 
+                    className="gap-2"
+                    onClick={handleSaveTrip}
+                    disabled={isSaving || isSaved}
+                  >
+                    {isSaving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : isSaved ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    <span className="hidden sm:inline">{isSaved ? 'Saved' : 'Save Trip'}</span>
+                  </Button>
                   <Button variant="glass" size="sm" className="gap-2">
                     <Download className="w-4 h-4" />
                     <span className="hidden sm:inline">Download</span>
@@ -94,6 +160,7 @@ const Index = () => {
                     <Share2 className="w-4 h-4" />
                     <span className="hidden sm:inline">Share</span>
                   </Button>
+                  <UserMenu variant="glass" />
                 </div>
               </div>
             </div>
@@ -132,13 +199,18 @@ const Index = () => {
                     Your Personalized Itinerary
                   </h2>
                   <p className="text-muted-foreground">
-                    Day-by-day activities curated just for you
+                    Day-by-day activities curated just for you • Click any place for details
                   </p>
                 </motion.div>
 
                 <div className="grid lg:grid-cols-2 gap-6">
                   {itinerary.days.map((day, index) => (
-                    <ItineraryCard key={day.day} dayData={day} index={index} />
+                    <ItineraryCard 
+                      key={day.day} 
+                      dayData={day} 
+                      index={index}
+                      destination={itinerary.destination}
+                    />
                   ))}
                 </div>
               </div>
@@ -166,9 +238,21 @@ const Index = () => {
                     Save your itinerary or start planning another incredible journey
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Button variant="hero" size="lg" className="gap-2">
-                      <Download className="w-5 h-5" />
-                      Download Itinerary
+                    <Button 
+                      variant="hero" 
+                      size="lg" 
+                      className="gap-2"
+                      onClick={handleSaveTrip}
+                      disabled={isSaving || isSaved}
+                    >
+                      {isSaving ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : isSaved ? (
+                        <Check className="w-5 h-5" />
+                      ) : (
+                        <Save className="w-5 h-5" />
+                      )}
+                      {isSaved ? 'Trip Saved!' : 'Save Itinerary'}
                     </Button>
                     <Button variant="glass" size="lg" onClick={handleReset}>
                       Plan Another Trip
@@ -185,6 +269,13 @@ const Index = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Login Modal */}
+      <LoginModal 
+        isOpen={isLoginOpen} 
+        onClose={() => setIsLoginOpen(false)}
+        onSuccess={handleSaveTrip}
+      />
     </div>
   );
 };
