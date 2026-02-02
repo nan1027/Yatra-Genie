@@ -1,109 +1,135 @@
-// Auth Context - Provides authentication state throughout the app
-// Easily replaceable: just swap the authService import
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { auth, db } from "@/firebase";
+import {
+  User,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from "firebase/auth";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  deleteDoc,
+  doc,
+  Timestamp,
+} from "firebase/firestore";
+import { Itinerary, TripFormData } from "@/types/travel";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { User, AuthState, SavedTrip } from '@/types/auth';
-import { Itinerary, TripFormData } from '@/types/travel';
+interface SavedTrip {
+  id: string;
+  userId: string;
+  itinerary: Itinerary;
+  formData: TripFormData;
+  createdAt: Timestamp;
+}
 
-// Import localStorage services (swap these for Firebase/Supabase)
-import localAuthService from '@/services/localStorage/authService';
-import localTripStorageService from '@/services/localStorage/tripStorageService';
-
-// Use these services (easy to swap)
-const authService = localAuthService;
-const tripStorageService = localTripStorageService;
-
-interface AuthContextType extends AuthState {
-  signIn: (email: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  saveTrip: (itinerary: Itinerary, formData: TripFormData) => Promise<SavedTrip>;
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string) => Promise<void>;
+  googleLogin: () => Promise<void>;
+  logout: () => Promise<void>;
+  saveTrip: (itinerary: Itinerary, formData: TripFormData) => Promise<void>;
   getMyTrips: () => Promise<SavedTrip[]>;
   deleteTrip: (tripId: string) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  // Initialize auth state
+  // 🔐 Listen to auth changes
   useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-    setIsLoading(false);
-
-    // Subscribe to auth changes
-    const unsubscribe = authService.onAuthChange((newUser) => {
-      setUser(newUser);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      setLoading(false);
     });
-
     return unsubscribe;
   }, []);
 
-  const signIn = useCallback(async (email: string) => {
-    setIsLoading(true);
-    try {
-      const user = await authService.signIn(email);
-      setUser(user);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const signOut = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      await authService.signOut();
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const saveTrip = useCallback(async (itinerary: Itinerary, formData: TripFormData): Promise<SavedTrip> => {
-    if (!user) throw new Error('Must be logged in to save trips');
-    
-    return tripStorageService.saveTrip({
-      userId: user.id,
-      destination: itinerary.destination,
-      totalDays: itinerary.totalDays,
-      travelType: itinerary.travelType,
-      budgetLevel: formData.budgetLevel,
-      itinerary,
-      formData,
-    });
-  }, [user]);
-
-  const getMyTrips = useCallback(async (): Promise<SavedTrip[]> => {
-    if (!user) return [];
-    return tripStorageService.getTrips(user.id);
-  }, [user]);
-
-  const deleteTrip = useCallback(async (tripId: string) => {
-    await tripStorageService.deleteTrip(tripId);
-  }, []);
-
-  const value: AuthContextType = {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
-    signIn,
-    signOut,
-    saveTrip,
-    getMyTrips,
-    deleteTrip,
+  // 🔑 Email login
+  const login = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(auth, email, password);
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  // 🆕 Email signup
+  const signup = async (email: string, password: string) => {
+    await createUserWithEmailAndPassword(auth, email, password);
+  };
+
+  // 🔵 Google login
+  const googleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  };
+
+  // 🚪 Logout
+  const logout = async () => {
+    await signOut(auth);
+  };
+
+  // 💾 Save trip to Firestore
+  const saveTrip = async (itinerary: Itinerary, formData: TripFormData) => {
+    if (!user) throw new Error("Not authenticated");
+
+    await addDoc(collection(db, "trips"), {
+      userId: user.uid,
+      itinerary,
+      formData,
+      createdAt: Timestamp.now(),
+    });
+  };
+
+  // 📂 Get user trips
+  const getMyTrips = async (): Promise<SavedTrip[]> => {
+    if (!user) return [];
+
+    const q = query(collection(db, "trips"), where("userId", "==", user.uid));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...(docSnap.data() as Omit<SavedTrip, "id">),
+    }));
+  };
+
+  // 🗑️ Delete trip
+  const deleteTrip = async (tripId: string) => {
+    await deleteDoc(doc(db, "trips", tripId));
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        isAuthenticated: !!user,
+        login,
+        signup,
+        googleLogin,
+        logout,
+        saveTrip,
+        getMyTrips,
+        deleteTrip,
+      }}
+    >
+      {!loading && children}
+    </AuthContext.Provider>
+  );
 };
 
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
 };
-
-export default AuthContext;

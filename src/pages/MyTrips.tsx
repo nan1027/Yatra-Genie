@@ -1,22 +1,20 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ArrowLeft, 
-  MapPin, 
-  Calendar, 
-  Users, 
-  IndianRupee, 
-  Trash2, 
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ArrowLeft,
+  MapPin,
+  Calendar,
+  IndianRupee,
+  Trash2,
   Eye,
   Plane,
-  Loader2 
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
-import { SavedTrip } from '@/types/auth';
-import UserMenu from '@/components/auth/UserMenu';
-import LoginModal from '@/components/auth/LoginModal';
+  Loader2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import UserMenu from "@/components/auth/UserMenu";
+import LoginModal from "@/components/auth/LoginModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,11 +24,28 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+} from "@/components/ui/alert-dialog";
+
+/* 🔹 Correct Firebase trip shape */
+interface SavedTrip {
+  id: string;
+  itinerary: {
+    destination: string;
+    totalDays: number;
+    travelType: string;
+    imageUrl?: string;
+  };
+  formData: {
+    budgetLevel: string;
+  };
+  createdAt: any;
+}
 
 const MyTrips = () => {
-  const { isAuthenticated, isLoading: authLoading, getMyTrips, deleteTrip } = useAuth();
+  const { isAuthenticated, loading: authLoading, getMyTrips, deleteTrip } =
+    useAuth();
   const navigate = useNavigate();
+
   const [trips, setTrips] = useState<SavedTrip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -52,39 +67,48 @@ const MyTrips = () => {
 
   const handleDelete = async (tripId: string) => {
     await deleteTrip(tripId);
-    setTrips(trips.filter(t => t.id !== tripId));
+    setTrips((prev) => prev.filter((t) => t.id !== tripId));
     setDeleteId(null);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
+  const formatDate = (date: any) => {
+    const d = date?.toDate ? date.toDate() : new Date(date);
+    return d.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
     });
   };
 
   const getTravelTypeIcon = (type: string) => {
     switch (type) {
-      case 'solo': return '👤';
-      case 'family': return '👨‍👩‍👧‍👦';
-      case 'friends': return '👥';
-      default: return '✈️';
+      case "solo":
+        return "👤";
+      case "family":
+        return "👨‍👩‍👧‍👦";
+      case "friends":
+        return "👥";
+      default:
+        return "✈️";
     }
   };
 
   const getBudgetLabel = (level: string) => {
     switch (level) {
-      case 'low': return 'Budget';
-      case 'medium': return 'Comfort';
-      case 'high': return 'Luxury';
-      default: return level;
+      case "low":
+        return "Budget";
+      case "medium":
+        return "Comfort";
+      case "high":
+        return "Luxury";
+      default:
+        return level;
     }
   };
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -93,7 +117,7 @@ const MyTrips = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 glass-card backdrop-blur-xl border-b border-border/50">
+      <header className="sticky top-0 z-50 border-b">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/">
             <Button variant="ghost" className="gap-2">
@@ -101,101 +125,69 @@ const MyTrips = () => {
               Back to Planner
             </Button>
           </Link>
-          <UserMenu variant="glass" />
+          <UserMenu />
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h1 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-2">
-            My Trips
-          </h1>
-          <p className="text-muted-foreground">
-            Your saved travel itineraries
-          </p>
-        </motion.div>
+        <h1 className="text-3xl font-bold mb-6">My Trips</h1>
 
         {!isAuthenticated ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass-card p-12 text-center max-w-md mx-auto"
-          >
-            <Plane className="w-16 h-16 text-primary/50 mx-auto mb-4" />
-            <h2 className="text-xl font-display font-semibold mb-2">Sign in to view your trips</h2>
-            <p className="text-muted-foreground mb-6">
-              Save and access your travel itineraries from anywhere
-            </p>
-            <Button variant="hero" onClick={() => setIsLoginOpen(true)}>
-              Sign In
-            </Button>
-            <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
-          </motion.div>
+          <div className="text-center py-20">
+            <Plane className="w-16 h-16 mx-auto mb-4 text-primary/50" />
+            <p className="mb-6">Sign in to view your saved trips</p>
+            <Button onClick={() => setIsLoginOpen(true)}>Sign In</Button>
+            <LoginModal
+              isOpen={isLoginOpen}
+              onClose={() => setIsLoginOpen(false)}
+            />
+          </div>
         ) : isLoading ? (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : trips.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass-card p-12 text-center max-w-md mx-auto"
-          >
-            <MapPin className="w-16 h-16 text-primary/50 mx-auto mb-4" />
-            <h2 className="text-xl font-display font-semibold mb-2">No trips yet</h2>
-            <p className="text-muted-foreground mb-6">
-              Start planning your first adventure!
-            </p>
+          <div className="text-center py-20">
+            <MapPin className="w-16 h-16 mx-auto mb-4 text-primary/50" />
+            <p className="mb-6">No trips saved yet</p>
             <Link to="/">
-              <Button variant="hero">Plan a Trip</Button>
+              <Button>Plan a Trip</Button>
             </Link>
-          </motion.div>
+          </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <AnimatePresence mode="popLayout">
-              {trips.map((trip, index) => (
+            <AnimatePresence>
+              {trips.map((trip) => (
                 <motion.div
                   key={trip.id}
-                  layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="glass-card-hover overflow-hidden group"
+                  exit={{ opacity: 0 }}
+                  className="border rounded-xl overflow-hidden"
                 >
-                  {/* Card Image */}
-                  <div className="relative h-40 overflow-hidden">
-                    <img
-                      src={trip.itinerary.imageUrl || '/placeholder.svg'}
-                      alt={trip.destination}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
-                    <div className="absolute bottom-3 left-4">
-                      <h3 className="text-xl font-display font-bold text-foreground">
-                        {trip.destination}
-                      </h3>
-                    </div>
-                  </div>
+                  <img
+                    src={trip.itinerary.imageUrl || "/placeholder.svg"}
+                    alt={trip.itinerary.destination}
+                    className="h-40 w-full object-cover"
+                  />
 
-                  {/* Card Body */}
-                  <div className="p-4 space-y-3">
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <div className="p-4 space-y-2">
+                    <h3 className="text-lg font-semibold">
+                      {trip.itinerary.destination}
+                    </h3>
+
+                    <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        {trip.totalDays} days
+                        {trip.itinerary.totalDays} days
+                      </span>
+                      <span>
+                        {getTravelTypeIcon(trip.itinerary.travelType)}{" "}
+                        {trip.itinerary.travelType}
                       </span>
                       <span className="flex items-center gap-1">
-                        {getTravelTypeIcon(trip.travelType)}
-                        {trip.travelType.charAt(0).toUpperCase() + trip.travelType.slice(1)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <IndianRupee className="w-3 h-3" />
-                        {getBudgetLabel(trip.budgetLevel)}
+                        <IndianRupee className="w-4 h-4" />
+                        {getBudgetLabel(trip.formData.budgetLevel)}
                       </span>
                     </div>
 
@@ -203,20 +195,17 @@ const MyTrips = () => {
                       Saved on {formatDate(trip.createdAt)}
                     </p>
 
-                    <div className="flex items-center gap-2 pt-2">
+                    <div className="flex gap-2 pt-2">
                       <Button
-                        variant="glass"
                         size="sm"
-                        className="flex-1 gap-2"
+                        className="flex-1"
                         onClick={() => navigate(`/trip/${trip.id}`)}
                       >
-                        <Eye className="w-4 h-4" />
-                        View
+                        <Eye className="w-4 h-4 mr-1" /> View
                       </Button>
                       <Button
-                        variant="ghost"
                         size="sm"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        variant="destructive"
                         onClick={() => setDeleteId(trip.id)}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -230,31 +219,25 @@ const MyTrips = () => {
         )}
       </main>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent className="glass-card">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this trip?</AlertDialogTitle>
+            <AlertDialogTitle>Delete trip?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete your saved itinerary.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteId && handleDelete(deleteId)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Footer */}
-      <footer className="py-8 text-center text-sm text-muted-foreground border-t border-border mt-12">
-        <p>AI-Powered India Travel Planner • Made with ❤️ for travelers</p>
-      </footer>
     </div>
   );
 };
