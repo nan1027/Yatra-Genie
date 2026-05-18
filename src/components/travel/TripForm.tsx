@@ -1,8 +1,16 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, Users, Wallet, Sparkles } from 'lucide-react';
+import { MapPin, Calendar, Users, Wallet, Sparkles, HeartHandshake, Gauge } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { TripFormData, INDIAN_CITIES, TravelType, BudgetLevel } from '@/types/travel';
+import {
+  TripFormData,
+  INDIAN_CITIES,
+  TravelType,
+  BudgetLevel,
+  TRAVEL_INTEREST_OPTIONS,
+  TravelInterest,
+  TripPace,
+} from '@/types/travel';
 
 interface TripFormProps {
   onSubmit: (data: TripFormData) => void;
@@ -15,6 +23,8 @@ const TripForm = ({ onSubmit, isLoading }: TripFormProps) => {
     days: 3,
     travelType: 'solo',
     budgetLevel: 'medium',
+    interests: ['culture', 'food'],
+    tripPace: 'relaxed',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -24,16 +34,32 @@ const TripForm = ({ onSubmit, isLoading }: TripFormProps) => {
     }
   };
 
+  const toggleInterest = (interest: TravelInterest) => {
+    const nextInterests = formData.interests.includes(interest)
+      ? formData.interests.filter((item) => item !== interest)
+      : [...formData.interests, interest];
+
+    setFormData({
+      ...formData,
+      interests: nextInterests,
+    });
+  };
+
   const travelTypes: { value: TravelType; label: string; icon: string }[] = [
-    { value: 'solo', label: 'Solo', icon: '🎒' },
-    { value: 'family', label: 'Family', icon: '👨‍👩‍👧‍👦' },
-    { value: 'friends', label: 'Friends', icon: '🎉' },
+    { value: 'solo', label: 'Solo', icon: 'Backpack' },
+    { value: 'family', label: 'Family', icon: 'Family' },
+    { value: 'friends', label: 'Friends', icon: 'Group' },
   ];
 
   const budgetLevels: { value: BudgetLevel; label: string; icon: string; desc: string }[] = [
-    { value: 'low', label: 'Budget', icon: '💰', desc: '₹1.5K-3K/day' },
-    { value: 'medium', label: 'Comfort', icon: '💎', desc: '₹4K-8K/day' },
-    { value: 'high', label: 'Luxury', icon: '👑', desc: '₹10K-25K/day' },
+    { value: 'low', label: 'Budget', icon: 'Save', desc: 'INR 1.5K-3K/day' },
+    { value: 'medium', label: 'Comfort', icon: 'Balance', desc: 'INR 4K-8K/day' },
+    { value: 'high', label: 'Luxury', icon: 'Premium', desc: 'INR 10K-25K/day' },
+  ];
+
+  const paceOptions: { value: TripPace; label: string; description: string }[] = [
+    { value: 'relaxed', label: 'Relaxed', description: 'Breathing room, slower days, buffer time' },
+    { value: 'packed', label: 'Packed', description: 'More stops, fuller days, high-energy plan' },
   ];
 
   return (
@@ -42,9 +68,8 @@ const TripForm = ({ onSubmit, isLoading }: TripFormProps) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.3 }}
       onSubmit={handleSubmit}
-      className="glass-card p-6 md:p-8 space-y-6 max-w-2xl mx-auto"
+      className="glass-card mx-auto max-w-2xl space-y-6 p-6 md:p-8"
     >
-      {/* Destination Select */}
       <div className="space-y-3">
         <label className="flex items-center gap-2 text-sm font-medium text-foreground/80">
           <MapPin className="w-4 h-4 text-primary" />
@@ -54,7 +79,7 @@ const TripForm = ({ onSubmit, isLoading }: TripFormProps) => {
           <select
             value={formData.destination}
             onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
-            className="w-full h-12 px-4 rounded-xl bg-muted/50 border border-border text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+            className="h-12 w-full appearance-none rounded-xl border border-border bg-muted/50 px-4 text-foreground transition-all focus:outline-none focus:ring-2 focus:ring-primary/50"
             required
           >
             <option value="" disabled>Select an Indian city</option>
@@ -62,13 +87,12 @@ const TripForm = ({ onSubmit, isLoading }: TripFormProps) => {
               <option key={city} value={city}>{city}</option>
             ))}
           </select>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-            ▼
+          <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+            v
           </div>
         </div>
       </div>
 
-      {/* Number of Days */}
       <div className="space-y-3">
         <label className="flex items-center gap-2 text-sm font-medium text-foreground/80">
           <Calendar className="w-4 h-4 text-primary" />
@@ -80,16 +104,15 @@ const TripForm = ({ onSubmit, isLoading }: TripFormProps) => {
             min="1"
             max="14"
             value={formData.days}
-            onChange={(e) => setFormData({ ...formData, days: parseInt(e.target.value) })}
-            className="flex-1 h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
+            onChange={(e) => setFormData({ ...formData, days: Number.parseInt(e.target.value, 10) })}
+            className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-muted accent-primary"
           />
-          <span className="w-16 h-12 flex items-center justify-center rounded-xl bg-primary/20 text-primary font-semibold">
-            {formData.days} {formData.days === 1 ? 'Day' : 'Days'}
+          <span className="flex h-12 w-16 items-center justify-center rounded-xl bg-primary/20 font-semibold text-primary">
+            {formData.days}
           </span>
         </div>
       </div>
 
-      {/* Travel Type */}
       <div className="space-y-3">
         <label className="flex items-center gap-2 text-sm font-medium text-foreground/80">
           <Users className="w-4 h-4 text-primary" />
@@ -101,20 +124,19 @@ const TripForm = ({ onSubmit, isLoading }: TripFormProps) => {
               key={type.value}
               type="button"
               onClick={() => setFormData({ ...formData, travelType: type.value })}
-              className={`p-4 rounded-xl border transition-all duration-300 ${
+              className={`rounded-xl border p-4 transition-all duration-300 ${
                 formData.travelType === type.value
-                  ? 'bg-primary/20 border-primary shadow-glow'
-                  : 'bg-muted/30 border-border hover:bg-muted/50'
+                  ? 'border-primary bg-primary/20 shadow-glow'
+                  : 'border-border bg-muted/30 hover:bg-muted/50'
               }`}
             >
-              <div className="text-2xl mb-1">{type.icon}</div>
-              <div className="text-sm font-medium">{type.label}</div>
+              <div className="mb-1 text-sm font-semibold">{type.label}</div>
+              <div className="text-xs text-muted-foreground">{type.icon}</div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Budget Level */}
       <div className="space-y-3">
         <label className="flex items-center gap-2 text-sm font-medium text-foreground/80">
           <Wallet className="w-4 h-4 text-primary" />
@@ -126,21 +148,69 @@ const TripForm = ({ onSubmit, isLoading }: TripFormProps) => {
               key={level.value}
               type="button"
               onClick={() => setFormData({ ...formData, budgetLevel: level.value })}
-              className={`p-4 rounded-xl border transition-all duration-300 ${
+              className={`rounded-xl border p-4 text-left transition-all duration-300 ${
                 formData.budgetLevel === level.value
-                  ? 'bg-primary/20 border-primary shadow-glow'
-                  : 'bg-muted/30 border-border hover:bg-muted/50'
+                  ? 'border-primary bg-primary/20 shadow-glow'
+                  : 'border-border bg-muted/30 hover:bg-muted/50'
               }`}
             >
-              <div className="text-2xl mb-1">{level.icon}</div>
-              <div className="text-sm font-medium">{level.label}</div>
-              <div className="text-xs text-muted-foreground mt-1">{level.desc}</div>
+              <div className="mb-1 text-sm font-semibold">{level.label}</div>
+              <div className="text-xs text-muted-foreground">{level.desc}</div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Submit Button */}
+      <div className="space-y-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-foreground/80">
+          <HeartHandshake className="w-4 h-4 text-primary" />
+          Interests
+        </label>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {TRAVEL_INTEREST_OPTIONS.map((interest) => (
+            <button
+              key={interest.value}
+              type="button"
+              onClick={() => toggleInterest(interest.value)}
+              className={`rounded-xl border px-4 py-3 text-sm transition-all ${
+                formData.interests.includes(interest.value)
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border bg-muted/30 hover:bg-muted/50'
+              }`}
+            >
+              {interest.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Pick a few interests so the assistant can prioritize better stops.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-foreground/80">
+          <Gauge className="w-4 h-4 text-primary" />
+          Trip Pace
+        </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {paceOptions.map((pace) => (
+            <button
+              key={pace.value}
+              type="button"
+              onClick={() => setFormData({ ...formData, tripPace: pace.value })}
+              className={`rounded-xl border p-4 text-left transition-all ${
+                formData.tripPace === pace.value
+                  ? 'border-primary bg-primary/15'
+                  : 'border-border bg-muted/30 hover:bg-muted/50'
+              }`}
+            >
+              <div className="text-sm font-semibold">{pace.label}</div>
+              <div className="mt-1 text-xs text-muted-foreground">{pace.description}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <Button
         type="submit"
         variant="hero"
@@ -161,7 +231,7 @@ const TripForm = ({ onSubmit, isLoading }: TripFormProps) => {
         ) : (
           <>
             <Sparkles className="w-5 h-5" />
-            Generate AI Itinerary
+            Generate Smart Itinerary
           </>
         )}
       </Button>

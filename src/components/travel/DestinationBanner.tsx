@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, Users, Wallet } from 'lucide-react';
+import { MapPin, Calendar, Wallet, Sparkles } from 'lucide-react';
 import { TravelType, BudgetLevel, BUDGET_ESTIMATES } from '@/types/travel';
-import heroImage from '@/assets/hero-india.jpg';
 
 interface DestinationBannerProps {
   destination: string;
@@ -10,20 +9,30 @@ interface DestinationBannerProps {
   budgetLevel: BudgetLevel;
 }
 
+const destinationThemes: Record<string, { tagline: string; gradient: string }> = {
+  Agra: { tagline: 'Mughal history, riverside views, and timeless architecture.', gradient: 'from-amber-500/80 via-rose-500/60 to-orange-900/80' },
+  Jaipur: { tagline: 'Royal forts, colorful bazaars, and pink-city charm.', gradient: 'from-rose-500/80 via-orange-500/60 to-fuchsia-900/80' },
+  Goa: { tagline: 'Beach mornings, cafes, and easy sunset energy.', gradient: 'from-sky-500/80 via-cyan-400/60 to-emerald-900/80' },
+  Kochi: { tagline: 'Backwaters, spice lanes, and coastal culture.', gradient: 'from-emerald-500/80 via-teal-400/60 to-slate-900/80' },
+  Mumbai: { tagline: 'Fast city rhythm, food trails, and iconic waterfronts.', gradient: 'from-indigo-500/80 via-sky-500/60 to-slate-900/80' },
+  Delhi: { tagline: 'Monuments, markets, and layered history in every direction.', gradient: 'from-red-500/80 via-amber-500/60 to-zinc-900/80' },
+  Varanasi: { tagline: 'Ghats, rituals, and unforgettable spiritual atmosphere.', gradient: 'from-orange-500/80 via-yellow-500/60 to-red-950/80' },
+};
+
 const DestinationBanner = ({ destination, days, travelType, budgetLevel }: DestinationBannerProps) => {
-  const getTravelTypeLabel = (type: TravelType) => {
-    switch (type) {
-      case 'solo': return 'Solo Adventure';
-      case 'family': return 'Family Trip';
-      case 'friends': return 'Friends Getaway';
-    }
+  const theme = destinationThemes[destination] ?? {
+    tagline: `A smart India trip built specifically around ${destination}.`,
+    gradient: 'from-primary/80 via-secondary/60 to-background',
   };
 
-  const getTravelTypeEmoji = (type: TravelType) => {
+  const getTravelTypeLabel = (type: TravelType) => {
     switch (type) {
-      case 'solo': return '🎒';
-      case 'family': return '👨‍👩‍👧‍👦';
-      case 'friends': return '🎉';
+      case 'solo':
+        return 'Solo Adventure';
+      case 'family':
+        return 'Family Trip';
+      case 'friends':
+        return 'Friends Getaway';
     }
   };
 
@@ -32,53 +41,46 @@ const DestinationBanner = ({ destination, days, travelType, budgetLevel }: Desti
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
-      className="relative rounded-3xl overflow-hidden h-64 md:h-80"
+      className="relative h-64 overflow-hidden rounded-3xl md:h-80"
     >
-      {/* Background Image */}
-      <div className="absolute inset-0">
-        <img
-          src={heroImage}
-          alt={destination}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-      </div>
+      <div className={`absolute inset-0 bg-gradient-to-br ${theme.gradient}`} />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.12),transparent_28%)]" />
 
-      {/* Content */}
-      <div className="relative z-10 h-full flex flex-col justify-end p-6 md:p-8">
+      <div className="relative z-10 flex h-full flex-col justify-between p-6 md:p-8">
+        <div className="flex items-center gap-2 self-start rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm text-white/90 backdrop-blur-md">
+          <Sparkles className="h-4 w-4" />
+          Destination-aware trip plan
+        </div>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
+          transition={{ duration: 0.5, delay: 0.25 }}
         >
-          <div className="flex items-center gap-2 mb-2">
-            <MapPin className="w-5 h-5 text-primary" />
-            <span className="text-sm text-primary font-medium">Your Destination</span>
+          <div className="mb-2 flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-white" />
+            <span className="text-sm font-medium text-white/80">Your Destination</span>
           </div>
-          <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
+          <h2 className="mb-3 text-3xl font-display font-bold text-white md:text-4xl">
             {destination}, India
           </h2>
-          
-          <div className="flex flex-wrap gap-3">
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full glass-card">
-              <Calendar className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">{days} {days === 1 ? 'Day' : 'Days'}</span>
+          <p className="max-w-2xl text-sm text-white/80 md:text-base">{theme.tagline}</p>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <div className="glass-card rounded-full px-4 py-2 text-sm font-medium text-white">
+              <Calendar className="mr-2 inline h-4 w-4" />
+              {days} {days === 1 ? 'Day' : 'Days'}
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full glass-card">
-              <span className="text-base">{getTravelTypeEmoji(travelType)}</span>
-              <span className="text-sm font-medium">{getTravelTypeLabel(travelType)}</span>
+            <div className="glass-card rounded-full px-4 py-2 text-sm font-medium text-white">
+              {getTravelTypeLabel(travelType)}
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full glass-card">
-              <Wallet className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">{BUDGET_ESTIMATES[budgetLevel].label}</span>
+            <div className="glass-card rounded-full px-4 py-2 text-sm font-medium text-white">
+              <Wallet className="mr-2 inline h-4 w-4" />
+              {BUDGET_ESTIMATES[budgetLevel].label}
             </div>
           </div>
         </motion.div>
       </div>
-
-      {/* Decorative elements */}
-      <div className="absolute top-4 right-4 w-20 h-20 bg-primary/30 rounded-full blur-2xl" />
-      <div className="absolute top-10 right-10 w-10 h-10 bg-secondary/30 rounded-full blur-xl" />
     </motion.div>
   );
 };

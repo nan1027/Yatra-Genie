@@ -15,7 +15,8 @@ import {
   Palette,
   ShoppingBag,
   Lightbulb,
-  ExternalLink
+  ExternalLink,
+  Heart,
 } from 'lucide-react';
 import { ItineraryDay, PlaceCategory, TimeOfDay, Place } from '@/types/travel';
 import PlaceDetailModal from './PlaceDetailModal';
@@ -24,9 +25,17 @@ interface ItineraryCardProps {
   dayData: ItineraryDay;
   index: number;
   destination?: string;
+  favoritePlaceIds?: string[];
+  onToggleFavorite?: (placeId: string) => void;
 }
 
-const ItineraryCard = ({ dayData, index, destination = '' }: ItineraryCardProps) => {
+const ItineraryCard = ({
+  dayData,
+  index,
+  destination = '',
+  favoritePlaceIds = [],
+  onToggleFavorite,
+}: ItineraryCardProps) => {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
 
   const getTimeIcon = (time: TimeOfDay) => {
@@ -170,6 +179,24 @@ const ItineraryCard = ({ dayData, index, destination = '' }: ItineraryCardProps)
                     </span>
                   </div>
 
+                  {onToggleFavorite && (
+                    <button
+                      type="button"
+                      className={`mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition ${
+                        favoritePlaceIds.includes(activity.place.id)
+                          ? 'border-primary bg-primary/15 text-primary'
+                          : 'border-border/50 text-muted-foreground hover:border-primary/40'
+                      }`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onToggleFavorite(activity.place.id);
+                      }}
+                    >
+                      <Heart className={`h-3 w-3 ${favoritePlaceIds.includes(activity.place.id) ? 'fill-current' : ''}`} />
+                      {favoritePlaceIds.includes(activity.place.id) ? 'Favorite' : 'Save favorite'}
+                    </button>
+                  )}
+
                   {/* Quick Tips */}
                   {activity.tips.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-border/50">
@@ -194,6 +221,8 @@ const ItineraryCard = ({ dayData, index, destination = '' }: ItineraryCardProps)
         destination={destination}
         isOpen={!!selectedPlace}
         onClose={() => setSelectedPlace(null)}
+        isFavorite={!!selectedPlace && favoritePlaceIds.includes(selectedPlace.id)}
+        onToggleFavorite={onToggleFavorite}
       />
     </>
   );

@@ -65,6 +65,21 @@ export const localTripStorageService: TripStorageService = {
     return trips.find(trip => trip.id === tripId) || null;
   },
 
+  updateTrip: async (tripId: string, updates): Promise<SavedTrip | null> => {
+    const trips = getAllTrips();
+    const index = trips.findIndex((trip) => trip.id === tripId);
+
+    if (index === -1) return null;
+
+    trips[index] = {
+      ...trips[index],
+      ...updates,
+    };
+
+    saveAllTrips(trips);
+    return trips[index];
+  },
+
   /**
    * Delete a trip
    * In production: Replace with Firestore deleteDoc or Supabase delete

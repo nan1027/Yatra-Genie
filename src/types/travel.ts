@@ -1,15 +1,23 @@
-// Types for India Travel Planner
-
 export type TravelType = 'solo' | 'family' | 'friends';
 export type BudgetLevel = 'low' | 'medium' | 'high';
 export type TimeOfDay = 'morning' | 'afternoon' | 'evening';
 export type PlaceCategory = 'monument' | 'food' | 'nature' | 'adventure' | 'culture' | 'shopping';
+export type TravelInterest =
+  | 'adventure'
+  | 'food'
+  | 'culture'
+  | 'nature'
+  | 'nightlife'
+  | 'shopping';
+export type TripPace = 'relaxed' | 'packed';
 
 export interface TripFormData {
   destination: string;
   days: number;
   travelType: TravelType;
   budgetLevel: BudgetLevel;
+  interests: TravelInterest[];
+  tripPace: TripPace;
 }
 
 export interface Place {
@@ -22,6 +30,9 @@ export interface Place {
   duration: string;
   rating?: number;
   imageUrl?: string;
+  familyFriendly?: boolean;
+  indoor?: boolean;
+  nearbyAlternatives?: string[];
 }
 
 export interface WeatherData {
@@ -45,6 +56,21 @@ export interface ItineraryDay {
   dailyBudget: number;
 }
 
+export interface BudgetBreakdown {
+  accommodation: number;
+  food: number;
+  transport: number;
+  activities: number;
+  shopping: number;
+}
+
+export interface AssistantHighlights {
+  summary: string;
+  weatherNote: string;
+  paceNote: string;
+  interestNote: string;
+}
+
 export interface Itinerary {
   destination: string;
   totalDays: number;
@@ -54,9 +80,12 @@ export interface Itinerary {
   days: ItineraryDay[];
   tips: string[];
   imageUrl: string;
+  budgetBreakdown: BudgetBreakdown;
+  packingChecklist: string[];
+  travelChecklist: string[];
+  assistantHighlights: AssistantHighlights;
 }
 
-// Indian cities for the destination selector
 export const INDIAN_CITIES = [
   'Agra',
   'Ahmedabad',
@@ -82,7 +111,15 @@ export const INDIAN_CITIES = [
   'Varanasi',
 ];
 
-// Budget estimates per day (in INR)
+export const TRAVEL_INTEREST_OPTIONS: { value: TravelInterest; label: string }[] = [
+  { value: 'adventure', label: 'Adventure' },
+  { value: 'food', label: 'Food' },
+  { value: 'culture', label: 'Culture' },
+  { value: 'nature', label: 'Nature' },
+  { value: 'nightlife', label: 'Nightlife' },
+  { value: 'shopping', label: 'Shopping' },
+];
+
 export const BUDGET_ESTIMATES: Record<BudgetLevel, { min: number; max: number; label: string }> = {
   low: { min: 1500, max: 3000, label: 'Budget' },
   medium: { min: 4000, max: 8000, label: 'Comfort' },

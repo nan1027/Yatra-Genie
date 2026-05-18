@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Download, Share2, Save, Check, Loader2 } from 'lucide-react';
@@ -9,13 +9,20 @@ import DestinationBanner from '@/components/travel/DestinationBanner';
 import WeatherCard from '@/components/travel/WeatherCard';
 import BudgetMeter from '@/components/travel/BudgetMeter';
 import ItineraryCard from '@/components/travel/ItineraryCard';
+import ItineraryFilters, {
+  ItineraryCategoryFilter,
+  ItineraryTimeFilter,
+  ItinerarySortOption,
+} from '@/components/travel/ItineraryFilters';
+import TravelAssistantPanel from '@/components/travel/TravelAssistantPanel';
 import TravelTips from '@/components/travel/TravelTips';
+import TripMapView from '@/components/travel/TripMapView';
 import UserMenu from '@/components/auth/UserMenu';
 import LoginModal from '@/components/auth/LoginModal';
 import { TripFormData, Itinerary } from '@/types/travel';
-import { generateMockItinerary } from '@/data/mockItinerary';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { generateLiveItinerary } from '@/services/travelPlannerService';
 
 const Index = () => {
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
@@ -24,32 +31,114 @@ const Index = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<ItineraryCategoryFilter>('all');
+  const [timeFilter, setTimeFilter] = useState<ItineraryTimeFilter>('all');
+  const [sortBy, setSortBy] = useState<ItinerarySortOption>('default');
+  const [favoritePlaceIds, setFavoritePlaceIds] = useState<string[]>([]);
 
   const { isAuthenticated, saveTrip } = useAuth();
   const { toast } = useToast();
+
+  const resetFilters = () => {
+    setCategoryFilter('all');
+    setTimeFilter('all');
+    setSortBy('default');
+  };
+
+  const getDurationScore = (duration: string) => {
+    const values = duration.match(/\d+/g)?.map(Number) ?? [2];
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  };
 
   const handleFormSubmit = async (data: TripFormData) => {
     setIsLoading(true);
     setFormData(data);
     setIsSaved(false);
 
-    // Simulate API call delay for realistic UX
-    // In production, this would call the backend APIs (Google Places, OpenWeather, OpenAI)
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Generate mock itinerary (replace with actual API integration)
-    const mockItinerary = generateMockItinerary(data);
-    setItinerary(mockItinerary);
-    setIsLoading(false);
-
-    // Scroll to results
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    try {
+      const nextItinerary = await generateLiveItinerary(data);
+      setItinerary(nextItinerary);
+      setFavoritePlaceIds([]);
+      resetFilters();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+      toast({
+        title: 'Live trip planning failed',
+        description: error instanceof Error ? error.message : 'Please check your backend configuration and try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleReset = () => {
     setItinerary(null);
     setFormData(null);
     setIsSaved(false);
+    setFavoritePlaceIds([]);
+    resetFilters();
+  };
+
+  const buildItineraryExport = () => {
+    if (!itinerary || !formData) return '';
+
+    const lines = [
+      `${itinerary.destination} Trip`,
+      `${itinerary.totalDays} days | ${itinerary.travelType} | ${formData.budgetLevel}`,
+      '',
+    ];
+
+    itinerary.days.forEach((day) => {
+      lines.push(`Day ${day.day} - ${day.date}`);
+      day.activities.forEach((activity) => {
+        lines.push(`- ${activity.time}: ${activity.place.name} (${activity.place.duration}, INR ${activity.place.estimatedCost})`);
+      });
+      lines.push('');
+    });
+
+    return lines.join('\n');
+  };
+
+  const handleDownload = () => {
+    const exportText = buildItineraryExport();
+    if (!exportText || !itinerary) return;
+
+    const blob = new Blob([exportText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${itinerary.destination.toLowerCase().replace(/\s+/g, '-')}-itinerary.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleShare = async () => {
+    const exportText = buildItineraryExport();
+    if (!exportText || !itinerary) return;
+
+    if (navigator.share) {
+      await navigator.share({
+        title: `${itinerary.destination} Trip`,
+        text: exportText,
+      });
+      return;
+    }
+
+    await navigator.clipboard.writeText(exportText);
+    window.open(`https://wa.me/?text=${encodeURIComponent(exportText)}`, '_blank');
+    toast({
+      title: 'Itinerary copied',
+      description: 'The trip summary was copied and WhatsApp share was opened.',
+    });
+  };
+
+  const handleToggleFavorite = (placeId: string) => {
+    setFavoritePlaceIds((current) =>
+      current.includes(placeId)
+        ? current.filter((id) => id !== placeId)
+        : [...current, placeId]
+    );
   };
 
   const handleSaveTrip = async () => {
@@ -62,7 +151,7 @@ const Index = () => {
 
     setIsSaving(true);
     try {
-      await saveTrip(itinerary, formData);
+      await saveTrip(itinerary, formData, favoritePlaceIds);
       setIsSaved(true);
       toast({
         title: 'Trip Saved!',
@@ -79,11 +168,45 @@ const Index = () => {
     }
   };
 
+  const totalActivities = itinerary?.days.reduce((count, day) => count + day.activities.length, 0) ?? 0;
+
+  const filteredDays = useMemo(() => {
+    if (!itinerary) return [];
+
+    return itinerary.days
+      .map((day) => ({
+        ...day,
+        activities: day.activities
+          .filter((activity) => {
+            const matchesCategory =
+              categoryFilter === 'all' || activity.place.category === categoryFilter;
+            const matchesTime = timeFilter === 'all' || activity.time === timeFilter;
+            return matchesCategory && matchesTime;
+          })
+          .sort((left, right) => {
+            switch (sortBy) {
+              case 'lowest-cost':
+                return left.place.estimatedCost - right.place.estimatedCost;
+              case 'highest-rated':
+                return (right.place.rating ?? 0) - (left.place.rating ?? 0);
+              case 'shortest-duration':
+                return getDurationScore(left.place.duration) - getDurationScore(right.place.duration);
+              case 'family-friendly':
+                return Number(right.place.familyFriendly) - Number(left.place.familyFriendly);
+              default:
+                return 0;
+            }
+          }),
+      }))
+      .filter((day) => day.activities.length > 0);
+  }, [itinerary, categoryFilter, timeFilter, sortBy]);
+
+  const visibleActivities = filteredDays.reduce((count, day) => count + day.activities.length, 0);
+
   return (
     <div className="min-h-screen bg-background">
       <AnimatePresence mode="wait">
         {!itinerary ? (
-          // Planning View
           <motion.div
             key="planning"
             initial={{ opacity: 0 }}
@@ -91,7 +214,6 @@ const Index = () => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
           >
-            {/* Top Bar */}
             <div className="absolute top-0 right-0 z-50 p-4">
               <div className="flex items-center gap-2">
                 <Link to="/my-trips">
@@ -102,20 +224,18 @@ const Index = () => {
             </div>
 
             <HeroSection />
-            
-            <div className="relative z-10 -mt-20 pb-20 px-4">
-              <div className="max-w-2xl mx-auto">
+
+            <div className="relative z-10 -mt-20 px-4 pb-20">
+              <div className="mx-auto max-w-2xl">
                 <TripForm onSubmit={handleFormSubmit} isLoading={isLoading} />
               </div>
             </div>
 
-            {/* Footer */}
-            <footer className="py-8 text-center text-sm text-muted-foreground border-t border-border">
-              <p>AI-Powered India Travel Planner • Made with ❤️ for travelers</p>
+            <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
+              <p>AI-Powered India Travel Planner. Made for travelers.</p>
             </footer>
           </motion.div>
         ) : (
-          // Results View
           <motion.div
             key="results"
             initial={{ opacity: 0 }}
@@ -124,21 +244,16 @@ const Index = () => {
             transition={{ duration: 0.5 }}
             className="pb-20"
           >
-            {/* Header */}
-            <div className="sticky top-0 z-50 glass-card backdrop-blur-xl border-b border-border/50">
-              <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-                <Button
-                  variant="ghost"
-                  onClick={handleReset}
-                  className="gap-2"
-                >
+            <div className="sticky top-0 z-50 glass-card border-b border-border/50 backdrop-blur-xl">
+              <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+                <Button variant="ghost" onClick={handleReset} className="gap-2">
                   <ArrowLeft className="w-4 h-4" />
                   Plan New Trip
                 </Button>
                 <div className="flex items-center gap-2">
-                  <Button 
+                  <Button
                     variant={isSaved ? 'outline' : 'hero'}
-                    size="sm" 
+                    size="sm"
                     className="gap-2"
                     onClick={handleSaveTrip}
                     disabled={isSaving || isSaved}
@@ -152,11 +267,11 @@ const Index = () => {
                     )}
                     <span className="hidden sm:inline">{isSaved ? 'Saved' : 'Save Trip'}</span>
                   </Button>
-                  <Button variant="glass" size="sm" className="gap-2">
+                  <Button variant="glass" size="sm" className="gap-2" onClick={handleDownload}>
                     <Download className="w-4 h-4" />
-                    <span className="hidden sm:inline">Download</span>
+                    <span className="hidden sm:inline">Export</span>
                   </Button>
-                  <Button variant="glass" size="sm" className="gap-2">
+                  <Button variant="glass" size="sm" className="gap-2" onClick={handleShare}>
                     <Share2 className="w-4 h-4" />
                     <span className="hidden sm:inline">Share</span>
                   </Button>
@@ -165,8 +280,7 @@ const Index = () => {
               </div>
             </div>
 
-            <div className="max-w-6xl mx-auto px-4 py-8">
-              {/* Destination Banner */}
+            <div className="mx-auto max-w-6xl px-4 py-8">
               <DestinationBanner
                 destination={itinerary.destination}
                 days={itinerary.totalDays}
@@ -174,20 +288,18 @@ const Index = () => {
                 budgetLevel={formData?.budgetLevel || 'medium'}
               />
 
-              {/* Info Cards Grid */}
-              <div className="grid md:grid-cols-2 gap-6 mt-8">
-                <WeatherCard 
-                  weather={itinerary.weather} 
-                  destination={itinerary.destination} 
-                />
+              <div className="mt-8 grid gap-6 md:grid-cols-2">
+                <WeatherCard weather={itinerary.weather} destination={itinerary.destination} />
                 <BudgetMeter
                   totalBudget={itinerary.totalBudget}
                   totalDays={itinerary.totalDays}
                   budgetLevel={formData?.budgetLevel || 'medium'}
+                  breakdown={itinerary.budgetBreakdown}
                 />
               </div>
 
-              {/* Itinerary Section */}
+              <TravelAssistantPanel itinerary={itinerary} />
+
               <div className="mt-12">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -195,52 +307,79 @@ const Index = () => {
                   transition={{ duration: 0.5 }}
                   className="mb-8"
                 >
-                  <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-2">
+                  <h2 className="mb-2 text-2xl font-display font-bold text-foreground md:text-3xl">
                     Your Personalized Itinerary
                   </h2>
                   <p className="text-muted-foreground">
-                    Day-by-day activities curated just for you • Click any place for details
+                    Day-by-day activities curated just for you. Click any place for details.
                   </p>
                 </motion.div>
 
-                <div className="grid lg:grid-cols-2 gap-6">
-                  {itinerary.days.map((day, index) => (
-                    <ItineraryCard 
-                      key={day.day} 
-                      dayData={day} 
-                      index={index}
-                      destination={itinerary.destination}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Travel Tips Section */}
-              <div className="mt-12">
-                <TravelTips 
-                  tips={itinerary.tips} 
-                  destination={itinerary.destination} 
+                <ItineraryFilters
+                  category={categoryFilter}
+                  timeOfDay={timeFilter}
+                  sortBy={sortBy}
+                  totalActivities={totalActivities}
+                  visibleActivities={visibleActivities}
+                  onCategoryChange={setCategoryFilter}
+                  onTimeChange={setTimeFilter}
+                  onSortChange={setSortBy}
+                  onReset={resetFilters}
                 />
+
+                {filteredDays.length > 0 ? (
+                  <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                    {filteredDays.map((day, index) => (
+                      <ItineraryCard
+                        key={day.day}
+                        dayData={day}
+                        index={index}
+                        destination={itinerary.destination}
+                        favoritePlaceIds={favoritePlaceIds}
+                        onToggleFavorite={handleToggleFavorite}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="glass-card mt-6 p-8 text-center">
+                    <h3 className="text-lg font-semibold text-foreground">
+                      No activities match these filters
+                    </h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Try a different category or time of day to explore more options.
+                    </p>
+                    <Button variant="outline" className="mt-4" onClick={resetFilters}>
+                      Reset filters
+                    </Button>
+                  </div>
+                )}
               </div>
 
-              {/* CTA Section */}
+              <div className="mt-12">
+                <TripMapView itinerary={itinerary} />
+              </div>
+
+              <div className="mt-12">
+                <TravelTips tips={itinerary.tips} destination={itinerary.destination} />
+              </div>
+
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.5 }}
                 className="mt-12 text-center"
               >
-                <div className="glass-card p-8 md:p-12 max-w-2xl mx-auto">
-                  <h3 className="text-xl md:text-2xl font-display font-bold text-foreground mb-4">
+                <div className="glass-card mx-auto max-w-2xl p-8 md:p-12">
+                  <h3 className="mb-4 text-xl font-display font-bold text-foreground md:text-2xl">
                     Ready for Your Adventure?
                   </h3>
-                  <p className="text-muted-foreground mb-6">
+                  <p className="mb-6 text-muted-foreground">
                     Save your itinerary or start planning another incredible journey
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Button 
-                      variant="hero" 
-                      size="lg" 
+                  <div className="flex flex-col justify-center gap-4 sm:flex-row">
+                    <Button
+                      variant="hero"
+                      size="lg"
                       className="gap-2"
                       onClick={handleSaveTrip}
                       disabled={isSaving || isSaved}
@@ -262,17 +401,15 @@ const Index = () => {
               </motion.div>
             </div>
 
-            {/* Footer */}
-            <footer className="py-8 text-center text-sm text-muted-foreground border-t border-border mt-12">
-              <p>AI-Powered India Travel Planner • Made with ❤️ for travelers</p>
+            <footer className="mt-12 border-t border-border py-8 text-center text-sm text-muted-foreground">
+              <p>AI-Powered India Travel Planner. Made for travelers.</p>
             </footer>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Login Modal */}
-      <LoginModal 
-        isOpen={isLoginOpen} 
+      <LoginModal
+        isOpen={isLoginOpen}
         onClose={() => setIsLoginOpen(false)}
         onSuccess={handleSaveTrip}
       />

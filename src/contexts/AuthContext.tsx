@@ -1,43 +1,21 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { auth, db } from "@/firebase";
-import {
-  User,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  GoogleAuthProvider,
-  signInWithPopup,
-} from "firebase/auth";
-import {
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where,
-  deleteDoc,
-  doc,
-  Timestamp,
-} from "firebase/firestore";
-import { Itinerary, TripFormData } from "@/types/travel";
-
-interface SavedTrip {
-  id: string;
-  userId: string;
-  itinerary: Itinerary;
-  formData: TripFormData;
-  createdAt: Timestamp;
-}
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { Itinerary, TripFormData } from '@/types/travel';
+import { SavedTrip, User } from '@/types/auth';
+import localAuthService from '@/services/localStorage/authService';
+import localTripStorageService from '@/services/localStorage/tripStorageService';
 
 interface AuthContextType {
   user: User | null;
+  isLoading: boolean;
   loading: boolean;
   isAuthenticated: boolean;
+  signIn: (email: string) => Promise<void>;
+  signOut: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
   googleLogin: () => Promise<void>;
   logout: () => Promise<void>;
-  saveTrip: (itinerary: Itinerary, formData: TripFormData) => Promise<void>;
+  saveTrip: (itinerary: Itinerary, formData: TripFormData, favoritePlaceIds?: string[]) => Promise<void>;
   getMyTrips: () => Promise<SavedTrip[]>;
   deleteTrip: (tripId: string) => Promise<void>;
 }
@@ -46,90 +24,92 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // 🔐 Listen to auth changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setLoading(false);
+    const currentUser = localAuthService.getCurrentUser();
+    setUser(currentUser);
+    setIsLoading(false);
+
+    const unsubscribe = localAuthService.onAuthChange((nextUser) => {
+      setUser(nextUser);
     });
+
     return unsubscribe;
   }, []);
 
-  // 🔑 Email login
-  const login = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+  const signIn = async (email: string) => {
+    const nextUser = await localAuthService.signIn(email);
+    setUser(nextUser);
   };
 
-  // 🆕 Email signup
-  const signup = async (email: string, password: string) => {
-    await createUserWithEmailAndPassword(auth, email, password);
+  const signOut = async () => {
+    await localAuthService.signOut();
+    setUser(null);
   };
 
-  // 🔵 Google login
+  const login = async (email: string, _password: string) => {
+    await signIn(email);
+  };
+
+  const signup = async (email: string, _password: string) => {
+    await signIn(email);
+  };
+
   const googleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    await signIn('traveler.demo@yatragenie.local');
   };
 
-  // 🚪 Logout
-  const logout = async () => {
-    await signOut(auth);
-  };
+  const saveTrip = async (itinerary: Itinerary, formData: TripFormData, favoritePlaceIds: string[] = []) => {
+    if (!user) {
+      throw new Error('Not authenticated');
+    }
 
-  // 💾 Save trip to Firestore
-  const saveTrip = async (itinerary: Itinerary, formData: TripFormData) => {
-    if (!user) throw new Error("Not authenticated");
-
-    await addDoc(collection(db, "trips"), {
-      userId: user.uid,
+    await localTripStorageService.saveTrip({
+      userId: user.id,
+      destination: itinerary.destination,
+      totalDays: itinerary.totalDays,
+      travelType: itinerary.travelType,
+      budgetLevel: formData.budgetLevel,
       itinerary,
       formData,
-      createdAt: Timestamp.now(),
+      favoritePlaceIds,
     });
   };
 
-  // 📂 Get user trips
-  const getMyTrips = async (): Promise<SavedTrip[]> => {
+  const getMyTrips = async () => {
     if (!user) return [];
-
-    const q = query(collection(db, "trips"), where("userId", "==", user.uid));
-    const snapshot = await getDocs(q);
-
-    return snapshot.docs.map((docSnap) => ({
-      id: docSnap.id,
-      ...(docSnap.data() as Omit<SavedTrip, "id">),
-    }));
+    return localTripStorageService.getTrips(user.id);
   };
 
-  // 🗑️ Delete trip
   const deleteTrip = async (tripId: string) => {
-    await deleteDoc(doc(db, "trips", tripId));
+    await localTripStorageService.deleteTrip(tripId);
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        isAuthenticated: !!user,
-        login,
-        signup,
-        googleLogin,
-        logout,
-        saveTrip,
-        getMyTrips,
-        deleteTrip,
-      }}
-    >
-      {!loading && children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      isLoading,
+      loading: isLoading,
+      isAuthenticated: !!user,
+      signIn,
+      signOut,
+      login,
+      signup,
+      googleLogin,
+      logout: signOut,
+      saveTrip,
+      getMyTrips,
+      deleteTrip,
+    }),
+    [user, isLoading]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
   return ctx;
 };

@@ -24,6 +24,7 @@ export interface SavedTrip {
   createdAt: string;
   itinerary: import('./travel').Itinerary;
   formData: import('./travel').TripFormData;
+  favoritePlaceIds?: string[];
 }
 
 // Auth service interface - implement this for different providers
@@ -39,5 +40,6 @@ export interface TripStorageService {
   saveTrip: (trip: Omit<SavedTrip, 'id' | 'createdAt'>) => Promise<SavedTrip>;
   getTrips: (userId: string) => Promise<SavedTrip[]>;
   getTrip: (tripId: string) => Promise<SavedTrip | null>;
+  updateTrip: (tripId: string, updates: Partial<Omit<SavedTrip, 'id' | 'createdAt' | 'userId'>>) => Promise<SavedTrip | null>;
   deleteTrip: (tripId: string) => Promise<void>;
 }
