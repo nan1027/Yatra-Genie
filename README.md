@@ -1,127 +1,460 @@
-# 🧞 Yatra Genie
+# ✈️ Yatra Genie — AI-Powered Travel Planner
 
-**An AI-powered multi-agent travel planner for India — generate personalised day-by-day itineraries in seconds.**
+Yatra Genie is an **AI-powered travel planning web application** that generates personalized travel itineraries based on a user's destination, number of days, travel type, budget, interests, and preferred trip pace.
 
-Yatra Genie uses a four-agent AI system powered by Google Gemini 2.0 Flash to plan complete trips across 22 Indian cities. Just fill in your destination, days, budget, and interests — and the multi-agent pipeline handles everything else.
-
----
-
-## ✨ What it does
-
-- Generates a full **day-by-day itinerary** personalised to your interests, pace, and budget
-- Fetches **live weather** from Open-Meteo and adapts recommendations accordingly
-- **AI budget allocation** across accommodation, food, transport, activities, and shopping
-- Produces a **personalised packing checklist**, travel tips, and assistant highlights
-- Filter activities by category, sort by cost or rating, view on a map
-- Save, export as `.txt`, and share via WhatsApp
+Instead of relying on a single AI prompt, Yatra Genie uses a **multi-agent architecture** where specialized AI agents independently handle different aspects of trip planning and work together to produce a complete itinerary.
 
 ---
 
-## 🤖 Multi-Agent Architecture
+## 🚀 Live Demo
 
-The core of Yatra Genie is a **four-agent AI orchestration pipeline**:
+🌐 **Live Application:**  
+https://yatra-genie.vercel.app
 
+💻 **GitHub Repository:**  
+https://github.com/nan1027/Yatra-Genie
+
+⚙️ **Backend Health Check:**  
+https://yatra-genie-api.onrender.com/api/health
+
+---
+
+## ✨ Features
+
+- 🤖 AI-powered personalized travel planning
+- 🧠 Multi-agent AI architecture
+- 🌦️ Real-time weather information using Open-Meteo
+- 🗺️ Day-wise travel itinerary generation
+- 💰 Budget-aware travel recommendations
+- 🍴 Food and local experience recommendations
+- 💡 Travel tips and practical suggestions
+- 🎯 Personalized recommendations based on user interests
+- ⚡ Parallel AI agent execution using `Promise.all()`
+- 🔐 Environment-variable based API configuration
+- 💾 Local storage for authentication and saved trips
+- 📱 Responsive web interface
+- 🛡️ Fallback responses when external AI/weather services are unavailable
+
+---
+
+## 🧠 Multi-Agent Architecture
+
+Yatra Genie uses four specialized AI agents:
+
+### 🌦️ 1. Weather Agent
+Provides weather-related information and recommendations for the selected destination.
+
+### 🗺️ 2. Itinerary Agent
+Creates a structured day-wise itinerary based on the destination, duration, interests, travel type, budget, and trip pace.
+
+### 💰 3. Budget Agent
+Provides budget-conscious recommendations and helps align the itinerary with the selected budget level.
+
+### 💡 4. Tips Agent
+Generates practical travel advice, local suggestions, and destination-specific tips.
+
+These agents are executed **in parallel using `Promise.all()`**, reducing unnecessary waiting time and improving overall response speed.
+
+---
+
+## 🏗️ System Architecture
+
+```text
+                         👤 USER
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │    React Frontend   │
+                │   Vite + TypeScript  │
+                └──────────┬──────────┘
+                           │
+                           │ REST API
+                           ▼
+                ┌─────────────────────┐
+                │   Express Backend   │
+                │      Node.js        │
+                └──────────┬──────────┘
+                           │
+              ┌────────────┼────────────┐
+              │            │            │
+              ▼            ▼            ▼
+        🌦️ Weather    🗺️ Itinerary   💰 Budget
+           Agent          Agent         Agent
+              │            │            │
+              └────────────┼────────────┘
+                           │
+                           ▼
+                       💡 Tips Agent
+                           │
+                           ▼
+                  Google Gemini API
+                           │
+                           ▼
+                    📋 Final Itinerary
 ```
-User Input
-     ↓
-Orchestrator
-     ↓
-[Phase 1]  Weather Agent  →  fetches live weather + Gemini writes strategy
-     ↓ (weather context passed down)
-[Phase 2 - Promise.all()]
-  Itinerary Agent  |  Budget Agent  |  Tips Agent
-  (run in parallel — 60% faster than sequential)
-     ↓
-Aggregated Itinerary → React Frontend
-```
-
-| Agent | Responsibility |
-|---|---|
-| **Weather Agent** | Open-Meteo live data + Gemini weather strategy |
-| **Itinerary Agent** | Gemini generates day-by-day activity plan |
-| **Budget Agent** | Gemini allocates budget across 5 categories |
-| **Tips Agent** | Gemini writes packing list, checklist, tips |
-
-Each agent has a **graceful fallback** — if Gemini is unavailable, the app continues working using rule-based logic.
 
 ---
 
 ## 🛠️ Tech Stack
 
-**Frontend**
-- React 18 + TypeScript + Vite
-- Tailwind CSS + shadcn/ui + Radix UI
-- Framer Motion, Lucide React, Recharts
-- React Hook Form + Zod, TanStack Query
+### Frontend
+- React
+- TypeScript
+- Vite
+- HTML5
+- CSS3
 
-**Backend**
-- Node.js + Express 5
-- Google Gemini 2.0 Flash (`@google/genai`)
-- Open-Meteo API (free, no key needed)
+### Backend
+- Node.js
+- Express.js
+- REST APIs
 
-**Auth & Storage**
-- localStorage (Firebase-ready architecture)
+### AI
+- Google Gemini API
+- Multi-Agent AI Architecture
+- Parallel Agent Execution
+
+### APIs
+- Open-Meteo API
+
+### Deployment
+- Vercel — Frontend
+- Render — Backend
+
+### Storage
+- Browser `localStorage`
 
 ---
 
-## 🚀 Getting Started
+## 📂 Project Structure
 
-### 1. Clone the repo
-```bash
-git clone https://github.com/your-username/yatra-genie.git
-cd yatra-genie
+```text
+Yatra-Genie/
+│
+├── public/
+│
+├── src/
+│   ├── components/
+│   ├── pages/
+│   ├── services/
+│   ├── data/
+│   └── ...
+│
+├── server/
+│   ├── agents/
+│   │   ├── weatherAgent.js
+│   │   ├── itineraryAgent.js
+│   │   ├── budgetAgent.js
+│   │   └── tipsAgent.js
+│   │
+│   ├── planTrip.js
+│   └── index.js
+│
+├── .env
+├── .env.example
+├── package.json
+├── vite.config.ts
+└── README.md
 ```
 
-### 2. Set up environment variables
-Create a `.env` file in the root:
+---
+
+## ⚙️ How It Works
+
+1. The user enters:
+   - Destination
+   - Number of days
+   - Travel type
+   - Budget level
+   - Interests
+   - Trip pace
+
+2. The frontend sends the travel preferences to the Express backend.
+
+3. The backend validates the request.
+
+4. The backend invokes the specialized AI agents.
+
+5. The agents process their respective tasks in parallel.
+
+6. Google Gemini generates AI-powered recommendations.
+
+7. Open-Meteo provides weather information.
+
+8. The backend combines the generated information.
+
+9. The final personalized itinerary is returned to the frontend.
+
+10. The frontend displays the complete travel plan to the user.
+
+---
+
+## ⚡ Parallel Agent Execution
+
+A key optimization in Yatra Genie is the parallel execution of independent agents.
+
+Instead of waiting for each agent sequentially:
+
+```text
+Weather → Itinerary → Budget → Tips
 ```
+
+the agents can execute concurrently:
+
+```text
+             ┌── Weather Agent ────┐
+             │                     │
+             ├── Itinerary Agent ──┤
+User Request ├── Budget Agent ─────┤ → Final Response
+             │                     │
+             └── Tips Agent ───────┘
+```
+
+This reduces unnecessary waiting and improves the overall response time of the application.
+
+---
+
+## 🔐 Environment Variables
+
+### Frontend
+
+Create a `.env` file in the project root:
+
+```env
 VITE_API_BASE_URL=http://localhost:8787
-GEMINI_API_KEY=your_gemini_api_key_here
 ```
-Get a free Gemini API key at [aistudio.google.com](https://aistudio.google.com/app/apikey)
 
-### 3. Install and run
+For production:
+
+```env
+VITE_API_BASE_URL=https://yatra-genie-api.onrender.com
+```
+
+> `VITE_API_BASE_URL` is used by the frontend to communicate with the deployed backend.
+
+---
+
+### Backend
+
+Create the required environment variables for the backend:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+FRONTEND_URL=http://localhost:8080
+```
+
+For production:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+FRONTEND_URL=https://yatra-genie.vercel.app
+```
+
+⚠️ **Never expose `GEMINI_API_KEY` in the frontend or commit it to GitHub.**
+
+---
+
+## 💻 Local Setup
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/nan1027/Yatra-Genie.git
+cd Yatra-Genie
+```
+
+### 2. Install dependencies
+
 ```bash
 npm install
+```
+
+### 3. Configure environment variables
+
+Create the required `.env` files and add your Gemini API key and backend/frontend URLs.
+
+### 4. Start the backend
+
+```bash
+node server/index.js
+```
+
+The backend runs on:
+
+```text
+http://localhost:8787
+```
+
+### 5. Start the frontend
+
+In another terminal:
+
+```bash
 npm run dev
 ```
 
-- Frontend runs at `http://localhost:8080`
-- Backend runs at `http://localhost:8787`
+The frontend runs on:
 
----
-
-## 🗺️ Cities Covered
-
-Agra · Ahmedabad · Amritsar · Bangalore · Chennai · Delhi · Goa · Hyderabad · Jaipur · Jaisalmer · Jodhpur · Kochi · Kolkata · Leh-Ladakh · Manali · Mumbai · Mysore · Pondicherry · Rishikesh · Shimla · Udaipur · Varanasi
-
----
-
-## 📁 Project Structure
-
-```
-yatra-genie/
-├── src/                        # React frontend
-│   ├── pages/                  # Index, MyTrips, TripDetail, Login
-│   ├── components/travel/      # All UI components
-│   ├── services/               # API client + localStorage
-│   ├── contexts/               # AuthContext
-│   └── types/                  # TypeScript interfaces
-└── server/                     # Node.js backend
-    ├── orchestrator.js          # Coordinates all agents
-    ├── planTrip.js              # Entry point + validation
-    ├── cityData.js              # Curated data for 22 cities
-    └── agents/
-        ├── weatherAgent.js
-        ├── itineraryAgent.js
-        ├── budgetAgent.js
-        └── tipsAgent.js
+```text
+http://localhost:8080
 ```
 
---
+### 6. Open the application
 
-This project was developed as part of the EPICS (Engineering Projects in Community Service) program at **VIT Bhopal University**.
+Visit:
+
+```text
+http://localhost:8080
+```
 
 ---
 
-Just replace `your-username` in the clone URL with your actual GitHub username before pasting. You can paste the entire thing directly into your `README.md` file.
+## 🚀 Deployment
+
+### Frontend — Vercel
+
+The React/Vite frontend is deployed on **Vercel**.
+
+Production URL:
+
+https://yatra-genie.vercel.app
+
+Required environment variable:
+
+```env
+VITE_API_BASE_URL=https://yatra-genie-api.onrender.com
+```
+
+---
+
+### Backend — Render
+
+The Express/Node.js backend is deployed on **Render**.
+
+Production API:
+
+https://yatra-genie-api.onrender.com
+
+Required environment variables:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+FRONTEND_URL=https://yatra-genie.vercel.app
+```
+
+Backend health endpoint:
+
+```text
+https://yatra-genie-api.onrender.com/api/health
+```
+
+A successful response looks like:
+
+```json
+{
+  "ok": true
+}
+```
+
+---
+
+## 🔑 Authentication & Storage
+
+The current application uses:
+
+- `localStorage` for authentication-related state
+- `localStorage` for saved trips
+
+The architecture can be extended in the future with cloud-based authentication and persistent database storage.
+
+---
+
+## 🌍 Supported Travel Planning
+
+Yatra Genie provides travel planning across a range of destinations and can generate recommendations based on:
+
+- Destination
+- Trip duration
+- Travel type
+- Budget
+- Interests
+- Preferred trip pace
+- Weather conditions
+
+---
+
+## 🛡️ Error Handling & Fallbacks
+
+Yatra Genie includes fallback handling for external service failures.
+
+If an AI or weather service fails, the application can provide fallback information instead of completely failing the trip-planning experience.
+
+The backend also exposes a health-check endpoint:
+
+```text
+GET /api/health
+```
+
+---
+
+## 🔮 Future Improvements
+
+Potential future improvements include:
+
+- 🔐 Firebase or OAuth-based authentication
+- 🗄️ Cloud database for persistent trips
+- 💳 Real-time flight and hotel pricing
+- 🗺️ Interactive maps and route optimization
+- 💬 AI travel chatbot
+- 📍 Location-aware recommendations
+- 🌐 Multi-language support
+- 📊 Personalized travel history and analytics
+- ⚡ API rate limiting and authentication
+- 📱 Progressive Web App support
+
+---
+
+## 📸 Project Highlights
+
+### 🤖 AI-Powered Planning
+Personalized travel plans generated using specialized AI agents.
+
+### 🌦️ Weather-Aware Recommendations
+Weather information is incorporated into the travel planning experience.
+
+### 💰 Budget Personalization
+Recommendations are adapted to the user's selected budget level.
+
+### ⚡ Multi-Agent Optimization
+Independent agents run concurrently to improve response time.
+
+---
+
+## ⭐ Project Links
+
+🚀 **Live Demo:**  
+https://yatra-genie.vercel.app
+
+💻 **Source Code:**  
+https://github.com/nan1027/Yatra-Genie
+
+⚙️ **Backend Health Check:**  
+https://yatra-genie-api.onrender.com/api/health
+
+---
+
+## 👩‍💻 Author
+
+**Nandita Rishishwar**
+
+B.Tech — Computer Science & Engineering  
+VIT Bhopal University
+
+GitHub:  
+https://github.com/nan1027
+
+---
+
+## 📄 License
+
+This project is developed for educational, portfolio, and demonstration purposes.
