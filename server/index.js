@@ -4,6 +4,8 @@ import cors from "cors";
 import { planTrip } from "./planTrip.js";
 
 const app = express();
+
+app.use(express.json());
 const port = Number.parseInt(process.env.PORT ?? "8787", 10);
 
 const allowedOrigin = (
