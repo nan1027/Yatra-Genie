@@ -6,7 +6,9 @@ import { planTrip } from "./planTrip.js";
 const app = express();
 const port = Number.parseInt(process.env.PORT ?? "8787", 10);
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:8787"
+}));
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/api/health", (_req, res) => {
