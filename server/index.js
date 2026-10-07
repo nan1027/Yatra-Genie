@@ -6,10 +6,15 @@ import { planTrip } from "./planTrip.js";
 const app = express();
 const port = Number.parseInt(process.env.PORT ?? "8787", 10);
 
+const allowedOrigin = (
+  process.env.FRONTEND_URL || "http://localhost:8080"
+).replace(/\/$/, "");
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:8787"
+  origin: allowedOrigin,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
-app.use(express.json({ limit: "1mb" }));
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
